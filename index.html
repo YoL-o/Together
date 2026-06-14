@@ -73,6 +73,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;font-family:
 #flove{font-size:22px;color:#ffbbcc;letter-spacing:0.12em;margin-top:16px;opacity:0;transition:opacity 3s;text-align:center;}
 #freplay{margin-top:50px;font-size:11px;color:#1e3040;letter-spacing:0.2em;font-family:sans-serif;background:none;border:none;cursor:pointer;opacity:0;transition:opacity 1s;}
 #freplay:hover{color:#4a6888;}
+
+/* INTRO CINEMATIC */
+#intro{
+  position:fixed;inset:0;background:#080810;z-index:90;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+#intro-text{
+  font-family:Georgia,serif;font-size:22px;color:#bdd0ec;
+  letter-spacing:0.18em;text-align:center;
+  opacity:0;transition:opacity 1.1s ease;
+}
 </style>
 </head>
 <body>
@@ -82,6 +94,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;font-family:
   <div class="phone">📱</div>
   <p>rotate to landscape to play</p>
 </div>
+
+<!-- INTRO CINEMATIC -->
+<div id="intro"><span id="intro-text"></span></div>
 
 <canvas id="gameCanvas"></canvas>
 <div id="roomtitle"></div>
@@ -121,17 +136,95 @@ var gameStarted=false;
 function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
 resize();
 
+// ── FULLSCREEN ──
+function tryFullscreen(){
+  var el=document.documentElement;
+  try{
+    if(el.requestFullscreen)el.requestFullscreen();
+    else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+    else if(el.mozRequestFullScreen)el.mozRequestFullScreen();
+  }catch(e){}
+}
+
+// ── AMBIENT SOUND ──
+var ambientStarted=false;
+function startAmbient(){
+  if(ambientStarted)return;ambientStarted=true;
+  try{
+    var ac=new(window.AudioContext||window.webkitAudioContext)();
+    // gentle A-minor drone: A2 + E3 + A3
+    [[110,0.032],[164.8,0.022],[220,0.016]].forEach(function(nv){
+      var o=ac.createOscillator(),g=ac.createGain(),rev=ac.createGain();
+      o.type='sine';o.frequency.value=nv[0];
+      g.gain.setValueAtTime(0,ac.currentTime);
+      g.gain.linearRampToValueAtTime(nv[1],ac.currentTime+4);
+      o.connect(g);g.connect(ac.destination);o.start();
+      // slight shimmer via slow detune
+      o.detune.setValueAtTime(0,ac.currentTime);
+      o.detune.linearRampToValueAtTime(4,ac.currentTime+7);
+      o.detune.linearRampToValueAtTime(-3,ac.currentTime+14);
+      o.detune.linearRampToValueAtTime(0,ac.currentTime+21);
+    });
+  }catch(e){}
+}
+
+// ── INTRO CINEMATIC ──
+var introEl=document.getElementById('intro');
+var introTxtEl=document.getElementById('intro-text');
+function showIntroLine(txt,cb){
+  introTxtEl.style.opacity='0';
+  setTimeout(function(){
+    introTxtEl.textContent=txt;
+    introTxtEl.style.opacity='1';
+    setTimeout(function(){
+      introTxtEl.style.opacity='0';
+      setTimeout(cb,1100);
+    },2000);
+  },400);
+}
+function runIntro(){
+  introEl.style.display='flex';
+  // Sequence: Good → pause → She's here → pause → Let's begin → ambient → reveal
+  showIntroLine('Good.',function(){
+    setTimeout(function(){
+      showIntroLine('You made it.',function(){
+        setTimeout(function(){
+          showIntroLine('Happy birthday, E.',function(){
+            startAmbient();
+            setTimeout(function(){
+              showIntroLine('Come on.',function(){
+                setTimeout(function(){
+                  showIntroLine('There\u2019s something I want to show you.',function(){
+                    setTimeout(function(){
+                      introEl.style.transition='opacity 1.6s';
+                      introEl.style.opacity='0';
+                      setTimeout(function(){introEl.style.display='none';},1700);
+                      fadeOut(function(){});
+                    },400);
+                  });
+                },600);
+              });
+            },200);
+          });
+        },900);
+      });
+    },900);
+  });
+}
+
 // ── LANDSCAPE CHECK ──
 function checkOrientation(){
   var isLandscape=window.innerWidth>window.innerHeight;
   lsScreen.style.display=isLandscape?'none':'flex';
   if(isLandscape&&!gameStarted){
     gameStarted=true;
+    tryFullscreen();
+    resize();
     buildRoom(0);
-    fadeOut(function(){});
     requestAnimationFrame(loop);
+    runIntro();
   }
-  if(isLandscape){resize();if(roomIdx>=0)buildRoom(roomIdx);}
+  if(isLandscape){resize();if(roomIdx>=0&&gameStarted)buildRoom(roomIdx);}
 }
 window.addEventListener('resize',checkOrientation);
 window.addEventListener('orientationchange',function(){setTimeout(checkOrientation,200);});
@@ -197,20 +290,9 @@ function room0(){
   border();
   chars=[mkC(L()+60,T()+(B()-T())*0.5,'#ffaacc','#cc6688','E')];
   controlled=0;
-  exitZone=null;
-  phase='dialogue';
-  say([
-    "Hey.",
-    "I know.",
-    "You woke up and already felt it.",
-    "That quiet dread of the day having a name.",
-    "You don't have to do anything with it.",
-    "Just... keep walking.",
-    "(walk right)"
-  ],function(){
-    exitZone={x:R()-40,y:T()+(B()-T())*0.5-28,w:30,h:56,needBoth:false};
-    phase='play';
-  });
+  exitZone={x:R()-40,y:T()+(B()-T())*0.5-28,w:30,h:56,needBoth:false};
+  phase='play';
+  r0HasMoved=false;r0DialogueFired=false;
 }
 
 // ════════════════════════════════════════
@@ -489,6 +571,7 @@ function tryMove(c,dx,dy){
 
 var hintShown=false;
 var proximityHintT=0;
+var r0HasMoved=false,r0DialogueFired=false;
 
 // ════════════════════════════════════════
 //  UPDATE
@@ -502,7 +585,25 @@ function update(){
   if(keys.up)dy=-SPEED;if(keys.down)dy=SPEED;
   if(keys.left)dx=-SPEED;if(keys.right)dx=SPEED;
   if(dx&&dy){dx*=0.707;dy*=0.707;}
-  if(dx||dy)tryMove(c,dx,dy);
+  if(dx||dy){
+    tryMove(c,dx,dy);
+    // room0: trigger dialogue a few seconds after E first moves
+    if(roomIdx===0&&!r0HasMoved&&!r0DialogueFired){
+      r0HasMoved=true;
+      setTimeout(function(){
+        if(roomIdx!==0)return;
+        r0DialogueFired=true;
+        say([
+          "Hey.",
+          "I know you don\u2019t really like this day.",
+          "You woke up and already felt it.",
+          "That quiet dread of the day having a name.",
+          "You don\u2019t have to do anything with it.",
+          "Just\u2026 keep walking."
+        ]);
+      },3000);
+    }
+  }
 
   // Room 2 proximity doors: both chars near door → open it
   if(roomIdx===2){
