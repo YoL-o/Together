@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>for E</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#080810;font-family:Georgia,serif;touch-action:none;}
+#gameCanvas{position:fixed;inset:0;width:100%;height:100%;display:block;}
+
+/* LANDSCAPE PROMPT */
+#landscape-screen{
+  position:fixed;inset:0;background:#080810;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+}
+#landscape-screen .phone{font-size:56px;animation:tilt 2s ease-in-out infinite;}
+@keyframes tilt{0%,100%{transform:rotate(0deg);}50%{transform:rotate(90deg);}}
+#landscape-screen p{font-family:sans-serif;font-size:13px;color:#3a5270;letter-spacing:0.15em;}
+
+/* DIALOGUE */
+#dialogue{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(5,5,14,0.95);
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding:12px 22px 15px;min-height:66px;
+  display:flex;align-items:center;justify-content:center;
+  z-index:10;pointer-events:none;
+}
+#dtext{font-size:15px;color:#bdd0ec;letter-spacing:0.04em;line-height:1.65;text-align:center;opacity:0;transition:opacity 0.7s;}
+
+/* CONTROLS */
+#controls{
+  position:fixed;bottom:70px;left:0;right:0;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 16px;z-index:15;pointer-events:none;
+}
+#dpad{pointer-events:all;display:grid;grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px 54px;gap:4px;}
+.dk{
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;
+  user-select:none;-webkit-user-select:none;
+}
+.dk:active,.dk.held{background:rgba(255,255,255,0.15);}
+.dk.empty{background:transparent;border-color:transparent;pointer-events:none;}
+
+#switchbtn{
+  pointer-events:all;
+  width:74px;height:74px;border-radius:50%;
+  background:rgba(100,130,220,0.1);
+  border:1px solid rgba(120,160,255,0.22);
+  color:#88aaee;font-family:sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  margin-bottom:4px;
+}
+#switchbtn .ico{font-size:24px;line-height:1;}
+#switchbtn .lbl{font-size:9px;letter-spacing:0.1em;}
+#switchbtn:active,#switchbtn.held{background:rgba(100,130,220,0.22);transform:scale(0.93);}
+
+#roomtitle{position:fixed;top:13px;left:0;right:0;text-align:center;font-family:sans-serif;font-size:10px;color:#1c2c3c;letter-spacing:0.25em;z-index:5;pointer-events:none;}
+
+#fade{position:fixed;inset:0;background:#080810;z-index:20;opacity:1;transition:opacity 1.1s;pointer-events:none;}
+
+#final{
+  position:fixed;inset:0;background:#080810;z-index:30;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 32px;opacity:0;pointer-events:none;transition:opacity 1.5s;
+}
+.fl{font-size:16px;color:#aac4e0;letter-spacing:0.05em;line-height:2.1;text-align:center;opacity:0;transition:opacity 2.2s;}
+#fheart{font-size:18px;color:#e0ecff;letter-spacing:0.08em;margin-top:12px;opacity:0;transition:opacity 2.5s;text-align:center;}
+#flove{font-size:22px;color:#ffbbcc;letter-spacing:0.12em;margin-top:16px;opacity:0;transition:opacity 3s;text-align:center;}
+#freplay{margin-top:50px;font-size:11px;color:#1e3040;letter-spacing:0.2em;font-family:sans-serif;background:none;border:none;cursor:pointer;opacity:0;transition:opacity 1s;}
+#freplay:hover{color:#4a6888;}
+</style>
+</head>
+<body>
+
+<!-- LANDSCAPE PROMPT -->
+<div id="landscape-screen">
+  <div class="phone">📱</div>
+  <p>rotate to landscape to play</p>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+<div id="roomtitle"></div>
+
+<div id="controls">
+  <div id="dpad">
+    <div class="dk empty"></div><div class="dk" id="dup">▲</div><div class="dk empty"></div>
+    <div class="dk" id="dleft">◀</div><div class="dk empty"></div><div class="dk" id="dright">▶</div>
+    <div class="dk empty"></div><div class="dk" id="ddown">▼</div><div class="dk empty"></div>
+  </div>
+  <div id="switchbtn">
+    <span class="ico">⇄</span><span class="lbl">SWITCH</span>
+  </div>
+</div>
+
+<div id="dialogue"><span id="dtext"></span></div>
+<div id="fade"></div>
+
+<div id="final">
+  <div class="fl" id="f1">You don't have to like birthdays.</div>
+  <div class="fl" id="f2">You don't have to pretend today is special.</div>
+  <div class="fl" id="f3">I just wanted you to know...</div>
+  <div class="fl" id="f4">No matter what kind of day it is...</div>
+  <div class="fl" id="f5">I'll stay.</div>
+  <div id="fheart">Happy Birthday, E ❤️</div>
+  <div id="flove">i love you.</div>
+  <button id="freplay" onclick="location.reload()">↺ play again</button>
+</div>
+
+<script>
+var canvas=document.getElementById('gameCanvas');
+var ctx=canvas.getContext('2d');
+var W=0,H=0,animT=0;
+var lsScreen=document.getElementById('landscape-screen');
+var gameStarted=false;
+
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize();
+
+// ── LANDSCAPE CHECK ──
+function checkOrientation(){
+  var isLandscape=window.innerWidth>window.innerHeight;
+  lsScreen.style.display=isLandscape?'none':'flex';
+  if(isLandscape&&!gameStarted){
+    gameStarted=true;
+    buildRoom(0);
+    fadeOut(function(){});
+    requestAnimationFrame(loop);
+  }
+  if(isLandscape){resize();if(roomIdx>=0)buildRoom(roomIdx);}
+}
+window.addEventListener('resize',checkOrientation);
+window.addEventListener('orientationchange',function(){setTimeout(checkOrientation,200);});
+checkOrientation();
+
+// state
+var roomIdx=-1,phase='dialogue',controlled=0;
+var chars=[],walls=[],plates=[],doors=[],exitZone=null,roomDone=false,switchCD=0;
+var keys={up:false,down:false,left:false,right:false};
+var SPEED=3.4;
+
+// ── DIALOGUE ──
+var dtEl=document.getElementById('dtext');
+var dtQ=[],dtCB=null,dtTimer=null;
+function say(lines,cb){
+  dtQ=typeof lines==='string'?[lines]:lines.slice();
+  dtCB=cb||null;_nextLine();
+}
+function _nextLine(){
+  if(!dtQ.length){dtEl.style.opacity='0';if(dtCB){var f=dtCB;dtCB=null;f();}return;}
+  var line=dtQ.shift();
+  dtEl.style.opacity='0';clearTimeout(dtTimer);
+  setTimeout(function(){dtEl.textContent=line;dtEl.style.opacity='1';},450);
+  dtTimer=setTimeout(_nextLine,Math.max(2600,line.length*65)+450);
+}
+function clearSay(){dtEl.style.opacity='0';clearTimeout(dtTimer);dtQ=[];dtCB=null;}
+
+// ── FADE ──
+var fadeEl=document.getElementById('fade');
+function fadeOut(cb){fadeEl.style.opacity='0';setTimeout(cb||function(){},1150);}
+function fadeIn(cb){fadeEl.style.opacity='1';setTimeout(cb||function(){},1150);}
+function setTitle(t){document.getElementById('roomtitle').textContent=t;}
+
+// ── HELPERS ──
+function mkC(x,y,col,ring,name){return{x:x,y:y,col:col,ring:ring,name:name,r:10,t:0};}
+function W_(x,y,w,h){return{x:x,y:y,w:w,h:h};}
+function L(){return 38;}
+function T(){return 72;}
+function R(){return W-38;}
+function B(){return H-72;}
+function border(){
+  walls.push(W_(L(),T(),R()-L(),9));
+  walls.push(W_(L(),B()-9,R()-L(),9));
+  walls.push(W_(L(),T(),9,B()-T()));
+  walls.push(W_(R()-9,T(),9,B()-T()));
+}
+function mkPlate(x,y,col,doorIdx,stay){
+  return{x:x,y:y,w:34,h:11,col:col,doorIdx:doorIdx,stay:!!stay,pressed:false,latched:false};
+}
+function mkDoor(x,y,w,h){return{x:x,y:y,w:w,h:h,open:false,latched:false};}
+function overlaps(ax,ay,ar,bx,by,bw,bh){
+  return ax+ar>bx&&ax-ar<bx+bw&&ay+ar>by&&ay-ar<by+bh;
+}
+
+// ════════════════════════════════════════
+//  ROOM 0 — LOST
+//  E alone. Empty room. She wakes up, it's her birthday.
+//  She doesn't want to think about it — just walks right.
+//  Exit: right wall.
+// ════════════════════════════════════════
+function room0(){
+  setTitle('🌙  i — lost');
+  border();
+  chars=[mkC(L()+60,T()+(B()-T())*0.5,'#ffaacc','#cc6688','E')];
+  controlled=0;
+  exitZone=null;
+  phase='dialogue';
+  say([
+    "Hey.",
+    "I know.",
+    "You woke up and already felt it.",
+    "That quiet dread of the day having a name.",
+    "You don't have to do anything with it.",
+    "Just... keep walking.",
+    "(walk right)"
+  ],function(){
+    exitZone={x:R()-40,y:T()+(B()-T())*0.5-28,w:30,h:56,needBoth:false};
+    phase='play';
+  });
+}
+
+// ════════════════════════════════════════
+//  ROOM 1 — DISTANCE
+//  Both start LEFT. Vertical wall in center.
+//  A stay-plate on LEFT keeps the door open.
+//  E holds it → switch to blue → walk blue through.
+//  Blue steps on latch-plate RIGHT → door stays open for good.
+//  Now E can walk through too. Both exit RIGHT.
+//  Dialogue: about distance not meaning absence.
+// ════════════════════════════════════════
+function room1(){
+  setTitle('🌙  ii — distance');
+  border();
+
+  var rH=B()-T(), rW=R()-L();
+  var midX=L()+Math.floor(rW*0.5);
+  var doorY=T()+Math.floor(rH*0.35);
+  var doorH=Math.floor(rH*0.3);
+
+  // center wall, gap is the door
+  walls.push(W_(midX-5,T()+9,10,doorY-(T()+9)));
+  walls.push(W_(midX-5,doorY+doorH,10,B()-9-(doorY+doorH)));
+  doors.push(mkDoor(midX-5,doorY,10,doorH)); // door 0
+
+  var startY=T()+rH*0.65;
+  chars=[
+    mkC(L()+60,startY,'#ffaacc','#cc6688','E'),
+    mkC(L()+110,startY,'#88aaff','#5577cc','')
+  ];
+  controlled=0;
+
+  // LEFT stay-plate (E holds → door 0 open)
+  plates.push(mkPlate(L()+50,T()+rH*0.36,'#ffaacc',0,true));
+  // RIGHT latch-plate (blue steps on → latches door 0 open forever)
+  plates.push(mkPlate(midX+44,T()+rH*0.36,'#88aaff',0,false));
+
+  exitZone={x:R()-40,y:T()+rH*0.38,w:30,h:Math.floor(rH*0.24),needBoth:true};
+
+  phase='dialogue';
+  say([
+    "There's a wall between you.",
+    "That happens sometimes.",
+    "Stand on the glowing spot. Hold it.",
+    "It keeps the door open while you stay.",
+    "Switch and walk the other through.",
+    "Once he's through, he'll hold it from his side.",
+    "Then you can follow.",
+    "Being on different sides doesn't mean being apart."
+  ],function(){phase='play';});
+}
+
+// ════════════════════════════════════════
+//  ROOM 2 — TOGETHER (relay puzzle)
+//  Three locked doors divide the room into 4 zones.
+//  To open each door: BOTH characters must be
+//  in the same zone at the same time.
+//  A proximity sensor (invisible) checks if they're
+//  close enough to each other near each door.
+//  They start separated (E left, blue far left) —
+//  actually both start zone 1, but must stay close
+//  and approach each door as a pair.
+//  Dialogue: about showing up, being in the same place.
+// ════════════════════════════════════════
+function room2(){
+  setTitle('🌙  iii — together');
+  border();
+
+  var rH=B()-T(), rW=R()-L();
+
+  // 3 vertical walls dividing room into 4 zones
+  // x positions at 25%, 50%, 75%
+  var x1=L()+Math.floor(rW*0.25);
+  var x2=L()+Math.floor(rW*0.50);
+  var x3=L()+Math.floor(rW*0.75);
+  var wallW=10;
+
+  // Each wall is FULL HEIGHT — no pre-existing gap.
+  // Door covers the MIDDLE section of each wall.
+  // Doors are proximity-opened (handled in update, not plates).
+  var dH=Math.floor(rH*0.38);
+  var dY=T()+9+Math.floor((rH-18-dH)*0.5); // vertically centered
+
+  walls.push(W_(x1,T()+9,wallW,dY-(T()+9)));
+  walls.push(W_(x1,dY+dH,wallW,B()-9-(dY+dH)));
+  doors.push(mkDoor(x1,dY,wallW,dH)); // door 0
+
+  walls.push(W_(x2,T()+9,wallW,dY-(T()+9)));
+  walls.push(W_(x2,dY+dH,wallW,B()-9-(dY+dH)));
+  doors.push(mkDoor(x2,dY,wallW,dH)); // door 1
+
+  walls.push(W_(x3,T()+9,wallW,dY-(T()+9)));
+  walls.push(W_(x3,dY+dH,wallW,B()-9-(dY+dH)));
+  doors.push(mkDoor(x3,dY,wallW,dH)); // door 2
+
+  // Store door X positions for proximity check
+  doors[0].trigX=x1; doors[0].trigY=dY; doors[0].trigH=dH;
+  doors[1].trigX=x2; doors[1].trigY=dY; doors[1].trigH=dH;
+  doors[2].trigX=x3; doors[2].trigY=dY; doors[2].trigH=dH;
+
+  var startY=T()+rH*0.55;
+  chars=[
+    mkC(L()+55,startY,'#ffaacc','#cc6688','E'),
+    mkC(L()+100,startY,'#88aaff','#5577cc','')
+  ];
+  controlled=0;
+
+  exitZone={x:R()-40,y:T()+rH*0.38,w:30,h:Math.floor(rH*0.24),needBoth:true};
+
+  phase='dialogue';
+  say([
+    "Three doors.",
+    "None of them open from one side alone.",
+    "You both have to be right there, together, for it to give way.",
+    "Stay close.",
+    "Move as one."
+  ],function(){phase='play';});
+}
+
+// ════════════════════════════════════════
+//  ROOM 3 — STORM (leapfrog)
+//
+//  TWO walls. Each door has a plate on BOTH sides.
+//  Plates are always reachable before the door opens.
+//
+//  Wall A at 40%: SOLID TOP, gap BOTTOM (60% down to floor).
+//    Plate A1: pink, zone 1, TOP area  → E stands top-left, holds door A open.
+//    Plate A2: blue, zone 2, TOP area  → blue crosses, goes top-right, holds door A for E.
+//    Both plates are in the SOLID top area so always reachable.
+//
+//  Wall B at 68%: gap TOP (top 60%), SOLID BOTTOM.
+//    Plate B1: blue, zone 2, BOTTOM area → blue walks down, holds door B open.
+//    Plate B2: pink, zone 3, BOTTOM area → E crosses top, goes bottom-right, holds for blue.
+//
+//  Flow:
+//  1. E (bottom-left start) walks UP to plate A1 (top-left) → door A opens (bottom gap).
+//  2. Switch blue → blue walks through bottom gap to zone 2 top area.
+//  3. Blue walks to plate A2 (top zone 2) → holds door A from right.
+//  4. Switch E → E walks through bottom gap (A2 holding it) → zone 2.
+//  Both in zone 2.
+//  5. Blue walks DOWN to plate B1 (bottom zone 2) → door B opens (top gap).
+//  6. Switch E → E walks through top gap to zone 3.
+//  7. E walks DOWN to plate B2 (bottom zone 3) → holds door B from right.
+//  8. Switch blue → blue walks through top gap → zone 3.
+//  Both in zone 3 → exit.
+// ════════════════════════════════════════
+function room3(){
+  setTitle('🌙  iv — storm');
+  border();
+
+  var rH=B()-T(), rW=R()-L();
+  var t2=T()+9, b2=B()-9;
+
+  // Wall A at 40%: solid top 55%, gap bottom 45%
+  var axX=L()+Math.floor(rW*0.40);
+  var aSolidH=Math.floor(rH*0.55);
+  var aGapY=t2+aSolidH;
+  var aGapH=b2-aGapY;
+  walls.push(W_(axX, t2, 10, aSolidH));           // solid top
+  doors.push(mkDoor(axX, aGapY, 10, aGapH));      // door 0 = bottom gap
+
+  // Wall B at 68%: gap top 55%, solid bottom 45%
+  var bxX=L()+Math.floor(rW*0.68);
+  var bGapH=Math.floor(rH*0.55);
+  var bGapY=t2;
+  var bSolidY=t2+bGapH;
+  doors.push(mkDoor(bxX, bGapY, 10, bGapH));      // door 1 = top gap
+  walls.push(W_(bxX, bSolidY, 10, b2-bSolidY));   // solid bottom
+
+  // Characters both start zone 1
+  // E starts bottom-left, blue starts top-left
+  chars=[
+    mkC(L()+55, T()+rH*0.75, '#ffaacc','#cc6688','E'),
+    mkC(L()+55, T()+rH*0.22, '#88aaff','#5577cc','')
+  ];
+  controlled=0;
+
+  // Plate A1: pink, top-left (zone 1 solid area) → door 0 stay
+  // E walks UP from bottom start to reach this. It is in the solid top portion, left of wall A.
+  plates.push(mkPlate(
+    L()+Math.floor(rW*0.18),
+    t2+Math.floor(aSolidH*0.35),
+    '#ffaacc', 0, true
+  ));
+
+  // Plate A2: blue, top-right of wall A (zone 2 solid area) → door 0 stay
+  // Blue crosses bottom gap and walks UP to reach this.
+  plates.push(mkPlate(
+    axX+24,
+    t2+Math.floor(aSolidH*0.35),
+    '#88aaff', 0, true
+  ));
+
+  // Plate B1: blue, bottom zone 2 (zone 2 solid area of wall B) → door 1 stay
+  // Blue walks DOWN after being in zone 2.
+  plates.push(mkPlate(
+    axX+Math.floor((bxX-axX)*0.45),
+    bSolidY+Math.floor((b2-bSolidY)*0.35),
+    '#88aaff', 1, true
+  ));
+
+  // Plate B2: pink, bottom zone 3 (zone 3 solid area of wall B) → door 1 stay
+  // E crosses top gap and walks DOWN.
+  plates.push(mkPlate(
+    bxX+24,
+    bSolidY+Math.floor((b2-bSolidY)*0.35),
+    '#ffaacc', 1, true
+  ));
+
+  exitZone={x:R()-40, y:T()+Math.floor(rH*0.38), w:30, h:Math.floor(rH*0.24), needBoth:true};
+
+  phase='dialogue';
+  say([
+    "It got darker.",
+    "Two walls. Each door needs someone on both sides.",
+    "E walks to the top plate and holds it. Blue goes through the bottom.",
+    "Blue holds from the other side. E follows.",
+    "Then blue walks down and holds. E goes through the top.",
+    "E holds from the right. Blue follows.",
+    "Neither of you gets through alone."
+  ],function(){phase='play';});
+}
+//  No puzzle. Both walk right side by side.
+//  The exit needs both of them.
+//  Dialogue: the real message.
+// ════════════════════════════════════════
+function room4(){
+  setTitle('🌙  v — together');
+  border();
+
+  var rH=B()-T();
+  chars=[
+    mkC(L()+55,T()+rH*0.52,'#ffaacc','#cc6688','E'),
+    mkC(L()+100,T()+rH*0.52,'#88aaff','#5577cc','')
+  ];
+  controlled=0;
+
+  exitZone={x:R()-40,y:T()+rH*0.38,w:30,h:Math.floor(rH*0.24),needBoth:true};
+
+  phase='dialogue';
+  say([
+    "No puzzles here.",
+    "Just... walk.",
+    "I kept trying to think of something big to say.",
+    "Something that would make today feel different.",
+    "But I think what I actually wanted was simpler than that.",
+    "To be in the same room as you.",
+    "On a day you don't even like.",
+    "That's enough for me.",
+    "(walk right, together)"
+  ],function(){phase='play';});
+}
+
+// ════════════════════════════════════════
+//  ROOM 4 — TOGETHER
+// ════════════════════════════════════════
+function buildRoom(i){
+  roomIdx=i;chars=[];walls=[];plates=[];doors=[];exitZone=null;roomDone=false;controlled=0;
+  if(i===0)room0();
+  else if(i===1)room1();
+  else if(i===2)room2();
+  else if(i===3)room3();
+  else if(i===4)room4();
+}
+
+// ════════════════════════════════════════
+//  PHYSICS
+// ════════════════════════════════════════
+function tryMove(c,dx,dy){
+  var nx=c.x+dx,ny=c.y+dy,r=c.r+2,ok=true;
+  walls.forEach(function(w){if(overlaps(nx,ny,r,w.x,w.y,w.w,w.h))ok=false;});
+  doors.forEach(function(d){if(!d.open&&overlaps(nx,ny,r,d.x,d.y,d.w,d.h))ok=false;});
+  if(nx<L()+11||nx>R()-11||ny<T()+11||ny>B()-11)ok=false;
+  if(ok){c.x=nx;c.y=ny;}
+}
+
+var hintShown=false;
+var proximityHintT=0;
+
+// ════════════════════════════════════════
+//  UPDATE
+// ════════════════════════════════════════
+function update(){
+  animT+=0.04;switchCD=Math.max(0,switchCD-1);proximityHintT=Math.max(0,proximityHintT-1);
+  if(phase!=='play')return;
+  var c=chars[controlled];if(!c)return;
+
+  var dx=0,dy=0;
+  if(keys.up)dy=-SPEED;if(keys.down)dy=SPEED;
+  if(keys.left)dx=-SPEED;if(keys.right)dx=SPEED;
+  if(dx&&dy){dx*=0.707;dy*=0.707;}
+  if(dx||dy)tryMove(c,dx,dy);
+
+  // Room 2 proximity doors: both chars near door → open it
+  if(roomIdx===2){
+    doors.forEach(function(d,i){
+      if(d.latched)return;
+      if(chars.length<2)return;
+      var near0=overlaps(chars[0].x,chars[0].y,chars[0].r+30,d.trigX,d.trigY,10,d.trigH);
+      var near1=overlaps(chars[1].x,chars[1].y,chars[1].r+30,d.trigX,d.trigY,10,d.trigH);
+      if(near0&&near1){d.open=true;d.latched=true;}
+    });
+  }
+
+  // plates — reset unlatched doors first so multiple stay-plates OR cleanly
+  doors.forEach(function(d){if(!d.latched)d.open=false;});
+  plates.forEach(function(p){
+    var wasPressed=p.pressed;
+    p.pressed=false;
+    chars.forEach(function(ch){if(overlaps(ch.x,ch.y,ch.r,p.x,p.y,p.w,p.h))p.pressed=true;});
+    if(typeof p.doorIdx==='number'&&p.doorIdx<doors.length){
+      if(p.stay){
+        if(p.pressed)doors[p.doorIdx].open=true;
+      } else {
+        if(p.pressed&&!p.latched){p.latched=true;doors[p.doorIdx].latched=true;doors[p.doorIdx].open=true;}
+      }
+    }
+  });
+
+  // exit check
+  if(exitZone&&!roomDone){
+    var ez=exitZone,ec=chars[controlled];
+    if(overlaps(ec.x,ec.y,ec.r,ez.x,ez.y,ez.w,ez.h)){
+      var ok2=true;
+      if(ez.needBoth&&chars.length>1){
+        var ot=chars[controlled===0?1:0];
+        if(!overlaps(ot.x,ot.y,ot.r,ez.x,ez.y,ez.w,ez.h)){
+          ok2=false;
+          if(!hintShown){hintShown=true;say("You both need to reach this together.");}
+        }
+      }
+      if(ok2){roomDone=true;hintShown=false;goNextRoom();}
+    } else {hintShown=false;}
+  }
+}
+
+// ════════════════════════════════════════
+//  DRAW
+// ════════════════════════════════════════
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=(roomIdx===3)?'#050508':'#090911';
+  ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='rgba(40,60,100,0.055)';ctx.lineWidth=0.5;
+  for(var gx=0;gx<W;gx+=34){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(var gy=0;gy<H;gy+=34){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+
+  // storm room: darker
+  if(roomIdx===3){
+    ctx.fillStyle='rgba(0,0,8,0.5)';ctx.fillRect(0,0,W,H);
+    // soft glow around each char
+    chars.forEach(function(c){
+      var g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,70);
+      g.addColorStop(0,hexA(c.col,0.1));g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    });
+  }
+
+  // room 2 proximity glow near doors
+  if(roomIdx===2){
+    doors.forEach(function(d){
+      if(d.latched)return;
+      if(!chars.length)return;
+      var near0=chars[0]&&overlaps(chars[0].x,chars[0].y,60,d.trigX,d.trigY,10,d.trigH);
+      var near1=chars[1]&&overlaps(chars[1].x,chars[1].y,60,d.trigX,d.trigY,10,d.trigH);
+      if(near0||near1){
+        var g=ctx.createRadialGradient(d.trigX+5,d.trigY+d.trigH/2,0,d.trigX+5,d.trigY+d.trigH/2,60);
+        var col=(near0&&near1)?'rgba(180,220,160,0.15)':'rgba(100,120,180,0.08)';
+        g.addColorStop(0,col);g.addColorStop(1,'transparent');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      }
+    });
+  }
+
+  // room 5 warm glow
+  if(roomIdx===4){
+    var wg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.55);
+    wg.addColorStop(0,'rgba(110,70,40,0.1)');wg.addColorStop(1,'transparent');
+    ctx.fillStyle=wg;ctx.fillRect(0,0,W,H);
+  }
+
+  // walls
+  ctx.fillStyle='rgba(255,255,255,0.055)';
+  walls.forEach(function(w){ctx.fillRect(w.x,w.y,w.w,w.h);});
+
+  // doors
+  doors.forEach(function(d){
+    if(!d.open){
+      ctx.fillStyle='rgba(18,18,36,0.97)';ctx.fillRect(d.x,d.y,d.w,d.h);
+      ctx.strokeStyle='rgba(100,120,180,0.18)';ctx.lineWidth=1;ctx.strokeRect(d.x,d.y,d.w,d.h);
+    }
+    // room2: show door outline even when open (so player knows where it was)
+    if(roomIdx===2&&d.latched){
+      ctx.strokeStyle='rgba(100,200,120,0.2)';ctx.lineWidth=1;ctx.strokeRect(d.x,d.y,d.w,d.h);
+    }
+  });
+
+  // plates
+  plates.forEach(function(p){
+    var glow=p.pressed||p.latched;
+    ctx.globalAlpha=glow?0.9:0.42+Math.sin(animT*2.2)*0.18;
+    ctx.fillStyle=glow?p.col:'rgba(255,255,255,0.06)';
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.strokeStyle=p.col;ctx.lineWidth=1;ctx.strokeRect(p.x,p.y,p.w,p.h);
+    ctx.globalAlpha=1;
+    ctx.font='8px sans-serif';ctx.fillStyle=hexA(p.col,0.5);ctx.textAlign='center';
+    ctx.fillText(p.stay?'hold':'step',p.x+p.w/2,p.y-4);
+  });
+
+  // exit arrow
+  if(exitZone&&phase==='play'){
+    ctx.save();ctx.globalAlpha=0.28+Math.sin(animT*2.8)*0.18;
+    ctx.fillStyle='#ffffff';ctx.font='20px sans-serif';ctx.textAlign='center';
+    ctx.fillText('▶',exitZone.x+exitZone.w/2+2,exitZone.y+exitZone.h/2+8);
+    ctx.restore();
+  }
+
+  // connection line
+  if(chars.length===2){
+    var d2=Math.hypot(chars[0].x-chars[1].x,chars[0].y-chars[1].y);
+    var la=Math.max(0,1-d2/(W*0.55))*0.28;
+    if(la>0.01){
+      ctx.save();ctx.beginPath();ctx.moveTo(chars[0].x,chars[0].y);
+      ctx.quadraticCurveTo((chars[0].x+chars[1].x)/2,(chars[0].y+chars[1].y)/2-12,chars[1].x,chars[1].y);
+      ctx.strokeStyle='rgba(180,160,255,'+la+')';
+      ctx.lineWidth=1;ctx.setLineDash([4,9]);ctx.lineDashOffset=-animT*10;
+      ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    }
+  }
+
+  // characters
+  chars.forEach(function(c,i){
+    var lit=(i===controlled);
+    c.t=(c.t||0)+0.036;
+    var pulse=Math.sin(c.t)*2.5;
+    var cx=c.x,cy=c.y+pulse;
+    var gr=ctx.createRadialGradient(cx,cy,0,cx,cy,lit?32:17);
+    gr.addColorStop(0,hexA(c.col,lit?0.26:0.09));gr.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(cx,cy,lit?32:17,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy,c.r+3,0,Math.PI*2);
+    ctx.strokeStyle=c.ring;ctx.lineWidth=lit?1.8:0.8;ctx.globalAlpha=lit?0.82:0.28;ctx.stroke();ctx.globalAlpha=1;
+    ctx.beginPath();ctx.arc(cx,cy,c.r,0,Math.PI*2);
+    ctx.fillStyle=c.col;ctx.globalAlpha=lit?1:0.4;ctx.fill();ctx.globalAlpha=1;
+    if(c.name){
+      ctx.font=(lit?'11':'9')+'px sans-serif';
+      ctx.fillStyle=lit?c.col:hexA(c.col,0.32);ctx.textAlign='center';
+      ctx.fillText(c.name,cx,cy-c.r-8);
+    }
+  });
+}
+
+function hexA(h,a){
+  var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+
+// ════════════════════════════════════════
+//  TRANSITIONS
+// ════════════════════════════════════════
+function goNextRoom(){
+  phase='transition';clearSay();
+  fadeIn(function(){
+    var nr=roomIdx+1;
+    if(nr>=5){doFinal();return;}
+    buildRoom(nr);fadeOut(function(){});
+  });
+}
+
+function doFinal(){
+  phase='final';clearSay();
+  document.getElementById('controls').style.display='none';
+  fadeIn(function(){
+    var fs=document.getElementById('final');
+    fs.style.opacity='1';fs.style.pointerEvents='all';
+    fadeEl.style.opacity='0';
+    [['f1',0],['f2',3800],['f3',7600],['f4',11000],['f5',14200],
+     ['fheart',17500],['flove',21000],['freplay',24500]].forEach(function(s){
+      setTimeout(function(){document.getElementById(s[0]).style.opacity='1';},s[1]);
+    });
+  });
+}
+
+// ════════════════════════════════════════
+//  SWITCH
+// ════════════════════════════════════════
+function doSwitch(){
+  if(phase!=='play')return;
+  if(chars.length<2||switchCD>0)return;
+  controlled=(controlled+1)%chars.length;
+  switchCD=18;
+}
+
+// ════════════════════════════════════════
+//  INPUT
+// ════════════════════════════════════════
+window.addEventListener('keydown',function(e){
+  if(e.key==='ArrowUp'||e.key==='w'){keys.up=true;e.preventDefault();}
+  if(e.key==='ArrowDown'||e.key==='s'){keys.down=true;e.preventDefault();}
+  if(e.key==='ArrowLeft'||e.key==='a'){keys.left=true;e.preventDefault();}
+  if(e.key==='ArrowRight'||e.key==='d'){keys.right=true;e.preventDefault();}
+  if(e.key===' '){doSwitch();e.preventDefault();}
+});
+window.addEventListener('keyup',function(e){
+  if(e.key==='ArrowUp'||e.key==='w')keys.up=false;
+  if(e.key==='ArrowDown'||e.key==='s')keys.down=false;
+  if(e.key==='ArrowLeft'||e.key==='a')keys.left=false;
+  if(e.key==='ArrowRight'||e.key==='d')keys.right=false;
+});
+
+function bindKey(id,key){
+  var el=document.getElementById(id);
+  function on(e){e.preventDefault();keys[key]=true;el.classList.add('held');}
+  function off(e){e.preventDefault();keys[key]=false;el.classList.remove('held');}
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on);el.addEventListener('mouseup',off);el.addEventListener('mouseleave',off);
+}
+bindKey('dup','up');bindKey('ddown','down');bindKey('dleft','left');bindKey('dright','right');
+
+var swBtn=document.getElementById('switchbtn');
+swBtn.addEventListener('touchstart',function(e){e.preventDefault();doSwitch();swBtn.classList.add('held');},{passive:false});
+swBtn.addEventListener('touchend',function(e){e.preventDefault();swBtn.classList.remove('held');},{passive:false});
+swBtn.addEventListener('click',doSwitch);
+
+function loop(){update();draw();requestAnimationFrame(loop);}
+</script>
+</body>
+</html>
